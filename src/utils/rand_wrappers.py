@@ -1,4 +1,4 @@
-import random
+
 def hundred_small_random():
     # létrehozunk egy üres listát
     output_list = []
@@ -11,7 +11,6 @@ def hundred_small_random():
     # visszaadjuk a listát
     return output_list
 
-import random
 random.seed(42) # beállítjuk a random seed értékét 42-re
 n = random.randint(1, 100) # generálunk egy véletlen egész számot 1 és 100 között
 print(n)
