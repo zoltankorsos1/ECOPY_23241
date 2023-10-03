@@ -1,7 +1,6 @@
 from pytest import approx
-from src.weekly import weekly_test_2 as wt
+from src.weekly import weekly_test_2_eredeti as wt
 import random
-
 
 def test_input():
     # Arrange
