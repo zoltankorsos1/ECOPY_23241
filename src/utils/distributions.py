@@ -116,12 +116,7 @@ class ChiSquaredDistribution:
 
 
     def pdf(self, x):
-        if x < 0:
-             return 0
-        numerator = x ** ((self.dof / 2) - 1) * math.exp(-x / 2)
-        denominator = (2 ** (self.dof / 2)) * math.gamma(self.dof / 2)
-        return numerator / denominator
-
+        return self.rand.pdf(x, df=self.dof)
 
     def cdf(self, x):
         return self.rand_gen.cdf(x, df=self.dof)
