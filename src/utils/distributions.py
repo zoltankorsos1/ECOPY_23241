@@ -18,47 +18,50 @@ import math
 
 
 class LogisticDistribution:
-    def __init__(self, rand, loc, scale):
+    def __init__(self, rand, location, scale):
         self.rand = rand
-        self.loc = loc
+        self.location = location
         self.scale = scale
 
     def generate_random(self):
-        u = self.rand.random()
-        return self.loc + self.scale * (1.0 / (1.0 - u) - 1.0)
+        import math
+        u = self.rand.random()  # Véletlenszerű szám az [0, 1) tartományból
+        x = self.location + self.scale * math.log(u / (1 - u))  # Logistic eloszlás generálása
+        return x
+
+
 
 
     def pdf(self, x):
-        exponent = math.exp(-(x - self.loc) / self.scale)
-        pdf_value = exponent / (self.scale * (1 + exponent)**2)
+        exponent = -(x - self.location) / self.scale
+        pdf_value =math.exp(exponent) / (self.scale * (1 + math.exp(exponent))**2)
         return pdf_value
 
 
-
     def cdf(self, x):
-        exponent = math.exp(-(x - self.loc) / self.scale)
-        cdf_value = 1.0 / (1.0 + exponent)
+        exponent = math.exp(-(x - self.location) / self.scale)
+        cdf_value = 1 / (1 + exponent)
         return cdf_value
 
-    def ppf(self, p):
-        if p < 0 or p > 1:
-            raise ValueError("Probability p must be in the range [0, 1]")
-        if p == 0:
-            return float('-inf')
-        if p == 1:
-            return float('inf')
-        ppf_value = self.loc - self.scale * math.log(1.0 / p - 1.0)
-        return ppf_value
 
+    def ppf(self, p):
+        import math
+        if p < 0 or p > 1:
+            raise ValueError("A valószínűségi értéknek az [0, 1] tartományban kell lennie.")
+        if p == 0:
+            return float("-inf")
+        if p == 1:
+            return float("inf")
+        ppf_value = self.location + self.scale * math.log(p / (1 - p))
+        return ppf_value
 
     def gen_rand(self):
         return self.generate_random()
 
 
-
     def mean(self):
         if self.scale != 0:
-            return self.loc
+            return self.location
         else:
             raise Exception("Moment undefined")
 
@@ -68,34 +71,29 @@ class LogisticDistribution:
         else:
             raise Exception("Moment undefined")
 
+
     def skewness(self):
-        if self.scale != 0:
-            return 0
-        else:
+        if self.scale == 0:
             raise Exception("Moment undefined")
+        skewness = 0
+        return skewness
 
     def ex_kurtosis(self):
-        if self.scale != 0:
-            return 1.2
-        else:
+        if self.scale == 0:
             raise Exception("Moment undefined")
+        ex_kurtosis = 1.2
+        return ex_kurtosis
 
 
     def mvsk(self):
-        if self.scale != 0:
-            first_moment = self.loc
-            second_central_moment = (math.pi**2 * self.scale**2) / 3
-            third_central_moment = 0
-            excess_kurtosis = 1.2
-            return [first_moment, second_central_moment, third_central_moment, excess_kurtosis]
-        else:
+        if self.scale == 0:
             raise Exception("Moment undefined")
+        return [self.mean(), self.variance(), self.skewness(), self.ex_kurtosis()]
 
 
 
 
-
-
+import numpy as np
 
 
 class ChiSquaredDistribution:
@@ -103,56 +101,61 @@ class ChiSquaredDistribution:
         self.rand = rand
         self.dof = dof
 
-
-import scipy.stats as stats
-import scipy.stats as stats
-import numpy as np
-
-
-class ChiSquaredDistribution:
-    def __init__(self, rand_gen, dof):
-        self.rand_gen = rand_gen
-        self.dof = dof
-
-
     def pdf(self, x):
-        return self.rand.pdf(x, df=self.dof)
+        import math
+        if x < 0:
+            return 0
+        coefficient = (1 / (2**(self.dof / 2))) * (1 / math.gamma(self.dof / 2))
+        exponent = (-x / 2)
+        return coefficient * (x**(self.dof / 2 - 1)) * math.exp(exponent)
 
     def cdf(self, x):
-        return self.rand_gen.cdf(x, df=self.dof)
+        import scipy.special
+        if x < 0:
+            return 0
+        return scipy.special.gammainc(self.dof / 2, x / 2)
+
 
     def ppf(self, p):
-        return self.rand_gen.ppf(p, df=self.dof)
-
+        import scipy.special
+        if p < 0 or p > 1:
+            raise ValueError("Moment undefined")
+        return 2 * scipy.special.gammaincinv(self.dof / 2, p)
 
     def gen_rand(self):
-        return self.rand_gen.logistic(loc=0, scale=1, size=None)
-
-
+        import random
+        u = random.uniform(0, 1)
+        return self.ppf(u)
     def mean(self):
-        mean = self.rand_gen.mean(df=self.dof)
-        if np.isnan(mean):
-            raise Exception("Moment undefined")
-        return mean
-
-
-
-
+        try: return self.dof
+        except: raise ValueError("Moment undefined")
     def variance(self):
-        variance = self.rand_gen.var(df=self.dof)
-        if np.isnan(variance):
-            raise Exception("Moment undefined")
-        return variance
-
+        try: return 2 * self.dof
+        except:
+            raise ValueError("Moment undefined")
     def skewness(self):
-        third_moment = self.rand_gen.moment(3, df=self.dof)
-        second_moment = self.rand_gen.moment(2, df=self.dof)
+        import math
+        try: return math.sqrt(8 / self.dof)
+        except:
+            raise ValueError("Moment undefined")
+    def ex_kurtosis(self):
+        try: return 12 / self.dof
+        except:
+            raise ValueError("Moment undefined")
+    def mvsk(self):
+            mean = self.mean()
+            variance = self.variance()
+            skewness = self.skewness()
+            ex_kurtosis = self.ex_kurtosis()
+            try: return [mean, variance, skewness, ex_kurtosis]
+            except:
+                raise ValueError("Moment undefined")
 
-        if third_moment and second_moment:
-            skewness = (third_moment - 3 * second_moment * self.mean() + 2 * self.mean() ** 3) / (second_moment ** 1.5)
-            if not np.isnan(skewness):
-                return skewness
-        raise Exception("Moment undefined")
+
+
+
+
+
 
 
 
