@@ -93,9 +93,6 @@ class LogisticDistribution:
 
 
 
-import numpy as np
-
-
 class ChiSquaredDistribution:
     def __init__(self, rand, dof):
         self.rand = rand
@@ -129,10 +126,13 @@ class ChiSquaredDistribution:
     def mean(self):
         try: return self.dof
         except: raise ValueError("Moment undefined")
+
+
     def variance(self):
         try: return 2 * self.dof
         except:
             raise ValueError("Moment undefined")
+
     def skewness(self):
         import math
         try: return math.sqrt(8 / self.dof)
@@ -142,6 +142,8 @@ class ChiSquaredDistribution:
         try: return 12 / self.dof
         except:
             raise ValueError("Moment undefined")
+
+
     def mvsk(self):
             mean = self.mean()
             variance = self.variance()
@@ -150,8 +152,6 @@ class ChiSquaredDistribution:
             try: return [mean, variance, skewness, ex_kurtosis]
             except:
                 raise ValueError("Moment undefined")
-
-
 
 
 
