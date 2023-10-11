@@ -127,11 +127,11 @@ class ChiSquaredDistribution:
         try: return self.dof
         except: raise ValueError("Moment undefined")
 
-
     def variance(self):
         try: return 2 * self.dof
         except:
             raise ValueError("Moment undefined")
+
 
     def skewness(self):
         import math
