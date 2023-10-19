@@ -37,10 +37,11 @@ def unique_items_over_ten_dollars(input_df):
     return unique_items_df
 
 def items_starting_with_s(input_df):
-    filtered_df = input_df[input_df['item_name'].str.startswith('S')]
-    filtered_df = filtered_df[['item_name']]
+    filtered_df = input_df['item_name'][input_df['item_name'].str.startswith('S')]
 
     return filtered_df
+
+
 
 def first_three_columns(input_df):
     selected_columns = input_df.iloc[:, :3]
