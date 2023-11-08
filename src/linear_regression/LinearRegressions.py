@@ -50,7 +50,10 @@ class LinearRegressionNP:
         X = self.right_hand_side[['Mkt-RF', 'SMB', 'HML']].values
         X = np.column_stack((np.ones(X.shape[0]), X))
         y = self.left_hand_side['Excess Return'].values
+
+        # OLS regresszió a NumPy segítségével
         beta = np.linalg.inv(X.T @ X) @ (X.T @ y)
+
         self.coefficients = beta
 
     def get_params(self) -> pd.Series:
@@ -69,17 +72,18 @@ class LinearRegressionNP:
             y = self.left_hand_side['Excess Return'].values
             n, k = X.shape[0], X.shape[1
 
-            y_hat = X @ self.coefficients
+            # Becsült hibák
+            y_hat = np.dot(X, self.coefficients)
             residuals = y - y_hat
 
             # Hiba négyzetösszeg
-            SSE = residuals @ residuals
+            SSE = np.dot(residuals, residuals)
 
             # Hiba szórásnégyzet
             MSE = SSE / (n - k)
 
             # Béta együtthatók standard hibái
-            XTX_inv = np.linalg.inv(X.T @ X)
+            XTX_inv = np.linalg.inv(np.dot(X.T, X))
             beta_std_err = np.sqrt(np.diagonal(MSE * XTX_inv))
 
             # t-statisztika
@@ -99,20 +103,20 @@ class LinearRegressionNP:
             X = self.right_hand_side[['Mkt-RF', 'SMB', 'HML']].values
             X = np.column_stack((np.ones(X.shape[0]), X))
             y = self.left_hand_side['Excess Return'].values
-            n, k = X.shape[0], X.shape[1]
+            n, k = X.shape[0], X.shape[1
 
             # Becsült hibák
-            y_hat = X @ self.coefficients
+            y_hat = np.dot(X, self.coefficients)
             residuals = y - y_hat
 
             # Hiba négyzetösszeg
-            SSE = residuals @ residuals
+            SSE = np.dot(residuals, residuals)
 
             # Hiba szórásnégyzet
             MSE = SSE / (n - k)
 
             # Béta együtthatók standard hibái
-            XTX_inv = np.linalg.inv(X.T @ X)
+            XTX_inv = np.linalg.inv(np.dot(X.T, X))
             beta_std_err = np.sqrt(np.diagonal(MSE * XTX_inv))
 
             # t-statisztika
@@ -123,8 +127,7 @@ class LinearRegressionNP:
 
             # Wald statisztika számítása
             R = np.array(R)
-            wald_value = (R @ self.coefficients) @ np.linalg.inv(R @ XTX_inv @ R.T) @ R @ self.coefficients
-            wald_value = wald_value.item()
+            wald_value = (np.dot(np.dot(np.dot(R, self.coefficients), np.linalg.inv(np.dot(np.dot(R, XTX_inv), R.T)), R, self.coefficients)).item()
 
             # Wald statisztika p-értékének számítása
             p_value = 1 - f.cdf(wald_value, len(R), n - k)
@@ -141,14 +144,14 @@ class LinearRegressionNP:
             n, k = X.shape[0], X.shape[1
 
             # Becsült hibák
-            y_hat = X @ self.coefficients
+            y_hat = np.dot(X, self.coefficients)
             residuals = y - y_hat
 
             # Hiba négyzetösszeg
-            SSE = residuals @ residuals
+            SSE = np.dot(residuals, residuals)
 
             # Teljes négyzetösszeg
-            SST = (y - np.mean(y)) @ (y - np.mean(y))
+            SST = np.dot(y - np.mean(y), y - np.mean(y))
 
             # Centrált R-négyzet
             crs = 1 - SSE / SST
@@ -159,8 +162,6 @@ class LinearRegressionNP:
             return f"Centered R-squared: {crs:.3f}, Adjusted R-squared: {ars:.3f}"
         else:
             raise ValueError("Model coefficients are not available. Fit the model first.")
-
-
 
 
 
