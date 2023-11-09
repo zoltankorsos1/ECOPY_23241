@@ -40,128 +40,52 @@ import numpy as np
 from scipy.stats import t, f
 from typing import List
 
+import numpy as np
+import pandas as pd
+import statsmodels.api as sm
+
 class LinearRegressionNP:
-    def __init__(self, left_hand_side: pd.DataFrame, right_hand_side: pd.DataFrame):
+
+    def __init__(self, left_hand_side, right_hand_side):
         self.left_hand_side = left_hand_side
         self.right_hand_side = right_hand_side
+        self._model = None
         self.coefficients = None
 
     def fit(self):
-        X = self.right_hand_side[['Mkt-RF', 'SMB', 'HML']].values
-        X = np.column_stack((np.ones(X.shape[0]), X))
-        y = self.left_hand_side['Excess Return'].values
-
-        # OLS regresszió a NumPy segítségével
-        beta = np.linalg.inv(X.T @ X) @ (X.T @ y)
-
-        self.coefficients = beta
+        # Using statsmodels for OLS regression
+        X = sm.add_constant(self.right_hand_side)
+        model = sm.OLS(self.left_hand_side, X).fit()
+        self._model = model
+        self.coefficients = model.params
 
     def get_params(self) -> pd.Series:
         if self.coefficients is not None:
-            param_names = ['Alpha', 'Mkt-RF', 'SMB', 'HML']
-            param_values = [self.coefficients[0]] + list(self.coefficients[1:])
-            beta_params = pd.Series(param_values, index=param_names, name="Beta coefficients")
+            param_names = self.coefficients.index.tolist()
+            beta_params = pd.Series(self.coefficients.values, index=param_names, name="Beta coefficients")
             return beta_params
         else:
             raise ValueError("Model coefficients are not available. Fit the model first.")
 
-    def __get_pvalues__(self) -> pd.Series:
-        if self.coefficients is not None:
-            X = self.right_hand_side[['Mkt-RF', 'SMB', 'HML']].values
-            X = np.column_stack((np.ones(X.shape[0]), X))
-            y = self.left_hand_side['Excess Return'].values
-            n, k = X.shape[0], X.shape[1
 
-            # Becsült hibák
-            y_hat = np.dot(X, self.coefficients)
-            residuals = y - y_hat
+    def get_pvalues(self):
+        p_values = self._model.pvalues.rename("P-values for the corresponding coefficients")
+        return p_values
 
-            # Hiba négyzetösszeg
-            SSE = np.dot(residuals, residuals)
+    def get_wald_test_result(self, restriction_matrix):
+        wald_result = self._model.wald_test(restriction_matrix)
+        wald_value = round(wald_result.statistic[0, 0], 3)
+        p_value = wald_result.pvalue
+        result_text = f"Wald: {wald_value:.3f}, p-value: {p_value:.3f}"
+        return result_text
 
-            # Hiba szórásnégyzet
-            MSE = SSE / (n - k)
+    def get_model_goodness_values(self):
+        centered_r_squared = self._model.rsquared
+        adjusted_r_squared = self._model.rsquared_adj
+        result_text = f"Centered R-squared: {centered_r_squared:.3f}, Adjusted R-squared: {adjusted_r_squared:.3f}"
+        return result_text
 
-            # Béta együtthatók standard hibái
-            XTX_inv = np.linalg.inv(np.dot(X.T, X))
-            beta_std_err = np.sqrt(np.diagonal(MSE * XTX_inv))
 
-            # t-statisztika
-            t_stats = self.coefficients / beta_std_err
-
-            # P-érték kiszámítása a t-statisztika alapján
-            p_values = (1 - t.cdf(np.abs(t_stats), df=n - k)) * 2
-
-            param_names = ['Alpha', 'Mkt-RF', 'SMB', 'HML']
-            p_values_series = pd.Series(p_values, index=param_names, name="P-values for the corresponding coefficients")
-            return p_values_series
-        else:
-            raise ValueError("Model coefficients are not available. Fit the model first.")
-
-    def __get_wald_test_result__(self, R: List[float]) -> str:
-        if self.coefficients is not None:
-            X = self.right_hand_side[['Mkt-RF', 'SMB', 'HML']].values
-            X = np.column_stack((np.ones(X.shape[0]), X))
-            y = self.left_hand_side['Excess Return'].values
-            n, k = X.shape[0], X.shape[1
-
-            # Becsült hibák
-            y_hat = np.dot(X, self.coefficients)
-            residuals = y - y_hat
-
-            # Hiba négyzetösszeg
-            SSE = np.dot(residuals, residuals)
-
-            # Hiba szórásnégyzet
-            MSE = SSE / (n - k)
-
-            # Béta együtthatók standard hibái
-            XTX_inv = np.linalg.inv(np.dot(X.T, X))
-            beta_std_err = np.sqrt(np.diagonal(MSE * XTX_inv))
-
-            # t-statisztika
-            t_stats = self.coefficients / beta_std_err
-
-            # P-érték kiszámítása a t-statisztika alapján
-            p_values = (1 - t.cdf(np.abs(t_stats), df=n - k)) * 2
-
-            # Wald statisztika számítása
-            R = np.array(R)
-            wald_value = (np.dot(np.dot(np.dot(R, self.coefficients), np.linalg.inv(np.dot(np.dot(R, XTX_inv), R.T)), R, self.coefficients)).item()
-
-            # Wald statisztika p-értékének számítása
-            p_value = 1 - f.cdf(wald_value, len(R), n - k)
-
-            return f"Wald: {wald_value:.3f}, p-value: {p_value:.3f}"
-        else:
-            raise ValueError("Model coefficients are not available. Fit the model first.")
-
-    def __get_model_goodness_values__(self) -> str:
-        if self.coefficients is not None:
-            X = self.right_hand_side[['Mkt-RF', 'SMB', 'HML']].values
-            X = np.column_stack((np.ones(X.shape[0]), X))
-            y = self.left_hand_side['Excess Return'].values
-            n, k = X.shape[0], X.shape[1
-
-            # Becsült hibák
-            y_hat = np.dot(X, self.coefficients)
-            residuals = y - y_hat
-
-            # Hiba négyzetösszeg
-            SSE = np.dot(residuals, residuals)
-
-            # Teljes négyzetösszeg
-            SST = np.dot(y - np.mean(y), y - np.mean(y))
-
-            # Centrált R-négyzet
-            crs = 1 - SSE / SST
-
-            # Módosított R-négyzet
-            ars = 1 - (SSE / (n - k - 1)) / (SST / (n - 1))
-
-            return f"Centered R-squared: {crs:.3f}, Adjusted R-squared: {ars:.3f}"
-        else:
-            raise ValueError("Model coefficients are not available. Fit the model first.")
 
 
 
