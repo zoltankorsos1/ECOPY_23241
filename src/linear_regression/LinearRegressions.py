@@ -171,6 +171,59 @@ class LinearRegressionGLS:
 
         return f"Centered R-squared: {centered_r_squared_new:.3f}, Adjusted R-squared: {adjusted_r_squared_new:.3f}"
 
+from typing import Optional
+import numpy as np
+import pandas as pd
+from scipy.stats import norm  # Add this line
+from scipy.optimize import minimize
+
+from typing import Optional
+import numpy as np
+import pandas as pd
+from scipy.stats import norm
+from scipy.optimize import minimize
+
+class LinearRegressionML:
+    def __init__(self, left_hand_side: pd.DataFrame, right_hand_side: pd.DataFrame):
+        self.left_hand_side = left_hand_side
+        self.right_hand_side = right_hand_side
+        self.coefficients = None
+
+    def _negative_log_likelihood(self, params: np.ndarray) -> float:
+        y = self.left_hand_side.values.flatten()
+        X = np.column_stack((np.ones_like(y), self.right_hand_side.values))
+        mu = np.dot(X, params)
+        neg_log_likelihood = -np.sum(norm.logpdf(y, loc=mu))
+        return neg_log_likelihood
+
+    def fit(self) -> None:
+        initial_guess = 0.1 * np.ones(self.right_hand_side.shape[1] + 1)
+        result = minimize(self._negative_log_likelihood, initial_guess, method='L-BFGS-B')
+        self.coefficients = result.x
+
+    def get_params(self, include_intercept: Optional[bool] = True) -> pd.Series:
+        if self.coefficients is None:
+            raise ValueError("A modell még nincs illesztve. Kérlek, hajtsd végre a fit metódust.")
+
+        param_names = ['Intercept' if include_intercept else '']
+        param_names += [f'Beta_{i}' for i in range(1, len(self.coefficients))]
+
+        return pd.Series(self.coefficients, index=param_names)
+
+    def get_pvalues(self):
+        self.fit()
+        degrees_of_freedom = len(self.left_hand_side) - len(self.coefficients)
+        residuals = self.left_hand_side.values.flatten() - np.dot(np.column_stack((np.ones_like(self.left_hand_side), self.right_hand_side.values)), self.coefficients)
+        residual_var = (residuals @ residuals) / degrees_of_freedom
+        t_stat = self.coefficients / np.sqrt(np.diag(residual_var * np.linalg.inv(np.dot(np.column_stack((np.ones_like(self.left_hand_side), self.right_hand_side.values)).T, np.column_stack((np.ones_like(self.left_hand_side), self.right_hand_side.values))))))
+
+        # Calculate two-tailed p-values using the t distribution
+        p_values = pd.Series([min(value, 1 - value) * 2 for value in norm.cdf(-np.abs(t_stat))],
+                             name='P-values for the corresponding coefficients')
+        return p_values
+
+
+
 
 
 
