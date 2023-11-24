@@ -180,8 +180,9 @@ from scipy.optimize import minimize
 from typing import Optional
 import numpy as np
 import pandas as pd
-from scipy.stats import norm
+from scipy.stats import norm, t
 from scipy.optimize import minimize
+from pytest import approx
 
 class LinearRegressionML:
     def __init__(self, left_hand_side: pd.DataFrame, right_hand_side: pd.DataFrame):
@@ -203,24 +204,39 @@ class LinearRegressionML:
 
     def get_params(self, include_intercept: Optional[bool] = True) -> pd.Series:
         if self.coefficients is None:
-            raise ValueError("A modell még nincs illesztve. Kérlek, hajtsd végre a fit metódust.")
+            raise ValueError("Model has not been fitted. Please run the fit method.")
 
         param_names = ['Intercept' if include_intercept else '']
         param_names += [f'Beta_{i}' for i in range(1, len(self.coefficients))]
 
         return pd.Series(self.coefficients, index=param_names)
 
+
     def get_pvalues(self):
         self.fit()
-        degrees_of_freedom = len(self.left_hand_side) - len(self.coefficients)
+        a, b = self.left_hand_side.shape[0], len(self.coefficients)
         residuals = self.left_hand_side.values.flatten() - np.dot(np.column_stack((np.ones_like(self.left_hand_side), self.right_hand_side.values)), self.coefficients)
-        residual_var = (residuals @ residuals) / degrees_of_freedom
-        t_stat = self.coefficients / np.sqrt(np.diag(residual_var * np.linalg.inv(np.dot(np.column_stack((np.ones_like(self.left_hand_side), self.right_hand_side.values)).T, np.column_stack((np.ones_like(self.left_hand_side), self.right_hand_side.values))))))
+        sq = np.sum(residuals ** 2) / (a - b)
+        beta = np.linalg.inv(np.dot(np.column_stack((np.ones_like(self.left_hand_side), self.right_hand_side.values)).T, np.column_stack((np.ones_like(self.left_hand_side), self.right_hand_side.values)))) * sq
+        t_stat = self.coefficients / np.sqrt(np.diag(beta))
+        p_values = 2 * (1 - t.cdf(np.abs(t_stat), df=a-b))
+        return pd.Series(p_values, name='P-values for the corresponding coefficients')
 
-        # Calculate two-tailed p-values using the t distribution
-        p_values = pd.Series([min(value, 1 - value) * 2 for value in norm.cdf(-np.abs(t_stat))],
-                             name='P-values for the corresponding coefficients')
-        return p_values
+    def get_model_goodness_values(self) -> str:
+        if self.coefficients is None:
+            raise ValueError("Model has not been fitted. Please run the fit method.")
+
+        y = self.left_hand_side.values.flatten()
+        X = np.column_stack((np.ones_like(y), self.right_hand_side.values))
+        y_mean = np.mean(y)
+        y_hat = np.dot(X, self.coefficients)
+        centered_r_squared = 1 - np.sum((y - y_hat) ** 2) / np.sum((y - y_mean) ** 2)
+
+        # Calculate adjusted R-squared
+        n, k = self.left_hand_side.shape[0], len(self.coefficients)
+        adjusted_r_squared = 1 - ((1 - centered_r_squared) * (n - 1)) / (n - k)
+
+        return f"Centered R-squared: {centered_r_squared:.3f}, Adjusted R-squared: {adjusted_r_squared:.3f}"
 
 
 
