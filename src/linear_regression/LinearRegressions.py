@@ -214,15 +214,18 @@ class LinearRegressionML:
 
     def get_pvalues(self):
         self.fit()
-        a, b = self.left_hand_side.shape[0], len(self.coefficients)
+        n, k = self.left_hand_side.shape[0], len(self.coefficients)
         X = np.column_stack((np.ones_like(self.left_hand_side), self.right_hand_side.values))
         residuals = self.left_hand_side.values.flatten() - np.dot(X, self.coefficients)
-        sq = np.sum(residuals ** 2) / (a - b)
-        beta = np.linalg.inv(np.dot(X.T, X)) * sq
-        t_stat = self.coefficients / np.sqrt(np.diag(beta))
-        p_values = 2 * (1 - t.cdf(np.abs(t_stat), df=a - b))
-        return pd.Series(p_values, name='P-values for the corresponding coefficients')
+        sigma_sq_ml = np.sum(residuals ** 2) / (n - k)
+        XTX_inv = np.linalg.inv(np.dot(X.T, X))
+        variance_beta_ml = sigma_sq_ml * XTX_inv
+        se_beta_ml = np.sqrt(np.diag(variance_beta_ml))
+        t_stat = self.coefficients / se_beta_ml
+        p_values = 2 * (1 - t.cdf(np.abs(t_stat), df=n - k))
 
+        return pd.Series(p_values, index=['Intercept'] + [f'Beta_{i}' for i in range(1, len(self.coefficients))],
+                         name='P-values for the corresponding coefficients')
 
     def get_model_goodness_values(self) -> str:
         if self.coefficients is None:
